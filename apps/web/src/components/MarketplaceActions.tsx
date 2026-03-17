@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { parseEther } from "ethers";
 import { getMarketplaceContract, MARKETPLACE_ADDRESS } from "@/lib/marketplace";
+import { supabase } from "@/lib/supabase";
+import { shortAddress } from "@/lib/format";
 
 export default function MarketplaceActions() {
   const [status, setStatus] = useState<string>("");
@@ -27,8 +29,31 @@ export default function MarketplaceActions() {
   const createJob = async () => {
     await runTx("Creating job", async () => {
       const contract = await getMarketplaceContract();
+      const jobIdPreview = await contract.createJob.staticCall(
+        title,
+        cid,
+        token,
+        parseEther(amount || "0")
+      );
       const tx = await contract.createJob(title, cid, token, parseEther(amount || "0"));
       await tx.wait();
+
+      const signer = await contract.runner?.getSigner?.();
+      const address = await signer?.getAddress?.();
+
+      if (address) {
+        await supabase.from("jobs").insert({
+          job_id: jobIdPreview.toString(),
+          title,
+          description_cid: cid || null,
+          budget: amount,
+          token,
+          client_wallet: address,
+          status: "open",
+        });
+      }
+
+      setJobId(jobIdPreview.toString());
     });
   };
 
@@ -37,6 +62,19 @@ export default function MarketplaceActions() {
       const contract = await getMarketplaceContract();
       const tx = await contract.acceptJob(jobId);
       await tx.wait();
+
+      const job = await contract.jobs(jobId);
+      const signer = await contract.runner?.getSigner?.();
+      const address = await signer?.getAddress?.();
+
+      await supabase
+        .from("jobs")
+        .update({
+          freelancer_wallet: address ?? null,
+          status: "accepted",
+          escrow_address: job.escrow,
+        })
+        .eq("job_id", jobId);
     });
   };
 
@@ -46,6 +84,11 @@ export default function MarketplaceActions() {
       const value = fundValue ? parseEther(fundValue) : 0n;
       const tx = await contract.fundJob(jobId, { value });
       await tx.wait();
+
+      await supabase
+        .from("jobs")
+        .update({ status: "funded" })
+        .eq("job_id", jobId);
     });
   };
 
@@ -54,6 +97,11 @@ export default function MarketplaceActions() {
       const contract = await getMarketplaceContract();
       const tx = await contract.approveCompletion(jobId);
       await tx.wait();
+
+      await supabase
+        .from("jobs")
+        .update({ status: "completed" })
+        .eq("job_id", jobId);
     });
   };
 
@@ -62,6 +110,11 @@ export default function MarketplaceActions() {
       const contract = await getMarketplaceContract();
       const tx = await contract.requestRefund(jobId);
       await tx.wait();
+
+      await supabase
+        .from("jobs")
+        .update({ status: "cancelled" })
+        .eq("job_id", jobId);
     });
   };
 
@@ -70,6 +123,11 @@ export default function MarketplaceActions() {
       const contract = await getMarketplaceContract();
       const tx = await contract.raiseDispute(jobId);
       await tx.wait();
+
+      await supabase
+        .from("jobs")
+        .update({ status: "disputed" })
+        .eq("job_id", jobId);
     });
   };
 
@@ -78,6 +136,11 @@ export default function MarketplaceActions() {
       const contract = await getMarketplaceContract();
       const tx = await contract.resolveDispute(jobId, releaseToFreelancer);
       await tx.wait();
+
+      await supabase
+        .from("jobs")
+        .update({ status: releaseToFreelancer ? "completed" : "cancelled" })
+        .eq("job_id", jobId);
     });
   };
 
@@ -189,7 +252,17 @@ export default function MarketplaceActions() {
             Resolve Dispute
           </button>
         </div>
-        <p className="mt-4 text-sm text-white/60">{status}</p>
+        <p className="mt-4 text-xs text-white/60">
+          Status: {status}
+        </p>
+        {jobId && (
+          <p className="mt-2 text-xs text-white/50">
+            Tracking Job {jobId} on-chain and off-chain.
+          </p>
+        )}
+        <p className="mt-2 text-xs text-white/50">
+          Token: {shortAddress(token)}
+        </p>
       </div>
     </div>
   );

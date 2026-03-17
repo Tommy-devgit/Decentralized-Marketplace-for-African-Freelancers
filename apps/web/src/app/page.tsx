@@ -1,5 +1,8 @@
 import WalletPanel from "@/components/WalletPanel";
 import MarketplaceActions from "@/components/MarketplaceActions";
+import JobBoard from "@/components/JobBoard";
+import IpfsUploadPanel from "@/components/IpfsUploadPanel";
+import EscrowStatusPanel from "@/components/EscrowStatusPanel";
 
 export default function Home() {
   return (
@@ -93,6 +96,14 @@ export default function Home() {
             </p>
             <div className="mt-8">
               <MarketplaceActions />
+            </div>
+          </section>
+
+          <section className="mt-16 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <JobBoard />
+            <div className="grid gap-6">
+              <IpfsUploadPanel />
+              <EscrowStatusPanel />
             </div>
           </section>
         </main>

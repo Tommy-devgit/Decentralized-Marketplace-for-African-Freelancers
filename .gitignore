@@ -1,1 +1,26 @@
-node_modules
+# dependencies
+node_modules/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# build outputs
+.next/
+out/
+
+# hardhat
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db

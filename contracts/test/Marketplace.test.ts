@@ -1,6 +1,7 @@
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import hre from "hardhat";
 
+const { ethers } = hre;
 const ZERO = ethers.ZeroAddress;
 
 describe("Marketplace", function () {
