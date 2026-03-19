@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { parseEther } from "ethers";
 import { getMarketplaceContract, MARKETPLACE_ADDRESS } from "@/lib/marketplace";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { shortAddress } from "@/lib/format";
 
 export default function MarketplaceActions() {
@@ -41,7 +41,7 @@ export default function MarketplaceActions() {
       const signer = await contract.runner?.getSigner?.();
       const address = await signer?.getAddress?.();
 
-      if (address) {
+      if (address && supabase) {
         await supabase.from("jobs").insert({
           job_id: jobIdPreview.toString(),
           title,
@@ -67,14 +67,16 @@ export default function MarketplaceActions() {
       const signer = await contract.runner?.getSigner?.();
       const address = await signer?.getAddress?.();
 
-      await supabase
-        .from("jobs")
-        .update({
-          freelancer_wallet: address ?? null,
-          status: "accepted",
-          escrow_address: job.escrow,
-        })
-        .eq("job_id", jobId);
+      if (supabase) {
+        await supabase
+          .from("jobs")
+          .update({
+            freelancer_wallet: address ?? null,
+            status: "accepted",
+            escrow_address: job.escrow,
+          })
+          .eq("job_id", jobId);
+      }
     });
   };
 
@@ -85,10 +87,12 @@ export default function MarketplaceActions() {
       const tx = await contract.fundJob(jobId, { value });
       await tx.wait();
 
-      await supabase
-        .from("jobs")
-        .update({ status: "funded" })
-        .eq("job_id", jobId);
+      if (supabase) {
+        await supabase
+          .from("jobs")
+          .update({ status: "funded" })
+          .eq("job_id", jobId);
+      }
     });
   };
 
@@ -98,10 +102,12 @@ export default function MarketplaceActions() {
       const tx = await contract.approveCompletion(jobId);
       await tx.wait();
 
-      await supabase
-        .from("jobs")
-        .update({ status: "completed" })
-        .eq("job_id", jobId);
+      if (supabase) {
+        await supabase
+          .from("jobs")
+          .update({ status: "completed" })
+          .eq("job_id", jobId);
+      }
     });
   };
 
@@ -111,10 +117,12 @@ export default function MarketplaceActions() {
       const tx = await contract.requestRefund(jobId);
       await tx.wait();
 
-      await supabase
-        .from("jobs")
-        .update({ status: "cancelled" })
-        .eq("job_id", jobId);
+      if (supabase) {
+        await supabase
+          .from("jobs")
+          .update({ status: "cancelled" })
+          .eq("job_id", jobId);
+      }
     });
   };
 
@@ -124,10 +132,12 @@ export default function MarketplaceActions() {
       const tx = await contract.raiseDispute(jobId);
       await tx.wait();
 
-      await supabase
-        .from("jobs")
-        .update({ status: "disputed" })
-        .eq("job_id", jobId);
+      if (supabase) {
+        await supabase
+          .from("jobs")
+          .update({ status: "disputed" })
+          .eq("job_id", jobId);
+      }
     });
   };
 
@@ -137,10 +147,12 @@ export default function MarketplaceActions() {
       const tx = await contract.resolveDispute(jobId, releaseToFreelancer);
       await tx.wait();
 
-      await supabase
-        .from("jobs")
-        .update({ status: releaseToFreelancer ? "completed" : "cancelled" })
-        .eq("job_id", jobId);
+      if (supabase) {
+        await supabase
+          .from("jobs")
+          .update({ status: releaseToFreelancer ? "completed" : "cancelled" })
+          .eq("job_id", jobId);
+      }
     });
   };
 
@@ -151,6 +163,11 @@ export default function MarketplaceActions() {
         <p className="mt-2 text-sm text-white/60">
           Marketplace: {MARKETPLACE_ADDRESS || "Set NEXT_PUBLIC_MARKETPLACE_ADDRESS"}
         </p>
+        {!isSupabaseConfigured && (
+          <p className="mt-2 text-xs text-amber-200">
+            Supabase not configured. Job board updates will be skipped.
+          </p>
+        )}
         <div className="mt-6 grid gap-4">
           <input
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"

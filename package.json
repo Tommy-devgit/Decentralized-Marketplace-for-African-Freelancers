@@ -11,5 +11,9 @@
     "lint:web": "npm --prefix apps/web run lint",
     "test:contracts": "npm --prefix contracts run test",
     "compile:contracts": "npm --prefix contracts run compile"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "tailwindcss": "^4.2.2"
   }
 }

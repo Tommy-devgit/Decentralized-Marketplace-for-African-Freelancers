@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Job } from "@/types/models";
 import { shortAddress } from "@/lib/format";
 
@@ -20,6 +20,11 @@ export default function JobBoard() {
   const [error, setError] = useState<string>("");
 
   const loadJobs = async () => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const { data, error } = await supabase
       .from("jobs")
@@ -54,15 +59,23 @@ export default function JobBoard() {
         <button
           onClick={loadJobs}
           className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white"
+          disabled={!supabase}
         >
           Refresh
         </button>
       </div>
 
+      {!isSupabaseConfigured && (
+        <p className="mt-4 text-sm text-amber-200">
+          Supabase is not configured. Add `NEXT_PUBLIC_SUPABASE_URL` and
+          `NEXT_PUBLIC_SUPABASE_ANON_KEY` to `.env.local` to enable the job board.
+        </p>
+      )}
+
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {loading && <p className="text-sm text-white/60">Loading jobs...</p>}
         {error && <p className="text-sm text-rose-200">{error}</p>}
-        {!loading && !error && jobs.length === 0 && (
+        {!loading && !error && jobs.length === 0 && supabase && (
           <p className="text-sm text-white/60">No jobs yet. Create the first one.</p>
         )}
 
