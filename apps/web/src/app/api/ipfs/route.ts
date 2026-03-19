@@ -24,22 +24,38 @@ export async function POST(request: Request) {
     JSON.stringify({ name: file.name || "upload" })
   );
 
-  const response = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${PINATA_JWT}`,
-    },
-    body: pinataData,
-  });
+  try {
+    const response = await fetch(
+      "https://api.pinata.cloud/pinning/pinFileToIPFS",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${PINATA_JWT}`,
+        },
+        body: pinataData,
+        signal: AbortSignal.timeout(30000),
+      }
+    );
 
-  const result = await response.json();
+    const result = await response.json();
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return Response.json(
+        { error: result?.error || "Pinata upload failed." },
+        { status: 500 }
+      );
+    }
+
+    return Response.json({ cid: result.IpfsHash });
+  } catch (error: any) {
     return Response.json(
-      { error: result?.error || "Pinata upload failed." },
-      { status: 500 }
+      {
+        error:
+          error?.cause?.code === "UND_ERR_CONNECT_TIMEOUT"
+            ? "Pinata request timed out. Check connectivity or try again."
+            : error?.message ?? "Pinata request failed.",
+      },
+      { status: 504 }
     );
   }
-
-  return Response.json({ cid: result.IpfsHash });
 }
