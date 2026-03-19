@@ -29,21 +29,30 @@ export default function MarketplaceActions() {
   const createJob = async () => {
     await runTx("Creating job", async () => {
       const contract = await getMarketplaceContract();
-      const jobIdPreview = await contract.createJob.staticCall(
-        title,
-        cid,
-        token,
-        parseEther(amount || "0")
-      );
       const tx = await contract.createJob(title, cid, token, parseEther(amount || "0"));
-      await tx.wait();
+      const receipt = await tx.wait();
+
+      let createdJobId: string | null = null;
+      if (receipt?.logs?.length) {
+        for (const log of receipt.logs) {
+          try {
+            const parsed = contract.interface.parseLog(log);
+            if (parsed?.name === "JobCreated") {
+              createdJobId = parsed.args.jobId.toString();
+              break;
+            }
+          } catch {
+            // skip non-matching logs
+          }
+        }
+      }
 
       const signer = await contract.runner?.getSigner?.();
       const address = await signer?.getAddress?.();
 
-      if (address && supabase) {
+      if (address && supabase && createdJobId) {
         await supabase.from("jobs").insert({
-          job_id: jobIdPreview.toString(),
+          job_id: createdJobId,
           title,
           description_cid: cid || null,
           budget: amount,
@@ -53,7 +62,11 @@ export default function MarketplaceActions() {
         });
       }
 
-      setJobId(jobIdPreview.toString());
+      if (createdJobId) {
+        setJobId(createdJobId);
+      } else {
+        setStatus("Job created, but Job ID not detected. Check console.");
+      }
     });
   };
 

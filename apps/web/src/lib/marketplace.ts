@@ -3,7 +3,10 @@ import { BrowserProvider, Contract } from "ethers";
 export const MARKETPLACE_ADDRESS =
   process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS ?? "";
 
+export const REQUIRED_CHAIN_ID = 31337n;
+
 export const MARKETPLACE_ABI = [
+  "event JobCreated(uint256 indexed jobId,address indexed client,address token,uint256 amount)",
   "function createJob(string title,string descriptionCid,address token,uint256 amount) returns (uint256)",
   "function acceptJob(uint256 jobId)",
   "function fundJob(uint256 jobId) payable",
@@ -21,9 +24,20 @@ export async function getProvider() {
   return new BrowserProvider(window.ethereum);
 }
 
+export async function ensureCorrectNetwork() {
+  const provider = await getProvider();
+  const network = await provider.getNetwork();
+  if (network.chainId !== REQUIRED_CHAIN_ID) {
+    throw new Error(
+      `Wrong network. Switch MetaMask to Localhost (chain ${REQUIRED_CHAIN_ID.toString()}).`
+    );
+  }
+}
+
 export async function getSigner() {
   const provider = await getProvider();
   await provider.send("eth_requestAccounts", []);
+  await ensureCorrectNetwork();
   return provider.getSigner();
 }
 
