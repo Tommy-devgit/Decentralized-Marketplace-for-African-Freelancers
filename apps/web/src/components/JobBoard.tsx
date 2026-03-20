@@ -43,6 +43,9 @@ export default function JobBoard() {
 
   useEffect(() => {
     loadJobs();
+    const handler = () => loadJobs();
+    window.addEventListener("jobs:updated", handler);
+    return () => window.removeEventListener("jobs:updated", handler);
   }, []);
 
   return (
@@ -64,6 +67,10 @@ export default function JobBoard() {
           Refresh
         </button>
       </div>
+
+      <p className="mt-3 text-xs text-white/40">
+        Supabase configured: {isSupabaseConfigured ? "yes" : "no"}
+      </p>
 
       {!isSupabaseConfigured && (
         <p className="mt-4 text-sm text-amber-200">

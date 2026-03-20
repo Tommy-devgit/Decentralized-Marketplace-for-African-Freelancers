@@ -51,7 +51,7 @@ export default function MarketplaceActions() {
       const address = await signer?.getAddress?.();
 
       if (address && supabase && createdJobId) {
-        await supabase.from("jobs").insert({
+        const { error } = await supabase.from("jobs").insert({
           job_id: createdJobId,
           title,
           description_cid: cid || null,
@@ -60,12 +60,18 @@ export default function MarketplaceActions() {
           client_wallet: address,
           status: "open",
         });
+
+        if (error) {
+          throw new Error(`Supabase insert failed: ${error.message}`);
+        }
+
+        window.dispatchEvent(new Event("jobs:updated"));
       }
 
       if (createdJobId) {
         setJobId(createdJobId);
       } else {
-        setStatus("Job created, but Job ID not detected. Check console.");
+        throw new Error("Job created, but Job ID not detected. Check console.");
       }
     });
   };
@@ -81,7 +87,7 @@ export default function MarketplaceActions() {
       const address = await signer?.getAddress?.();
 
       if (supabase) {
-        await supabase
+        const { error } = await supabase
           .from("jobs")
           .update({
             freelancer_wallet: address ?? null,
@@ -89,6 +95,12 @@ export default function MarketplaceActions() {
             escrow_address: job.escrow,
           })
           .eq("job_id", jobId);
+
+        if (error) {
+          throw new Error(`Supabase update failed: ${error.message}`);
+        }
+
+        window.dispatchEvent(new Event("jobs:updated"));
       }
     });
   };
@@ -101,10 +113,16 @@ export default function MarketplaceActions() {
       await tx.wait();
 
       if (supabase) {
-        await supabase
+        const { error } = await supabase
           .from("jobs")
           .update({ status: "funded" })
           .eq("job_id", jobId);
+
+        if (error) {
+          throw new Error(`Supabase update failed: ${error.message}`);
+        }
+
+        window.dispatchEvent(new Event("jobs:updated"));
       }
     });
   };
@@ -116,10 +134,16 @@ export default function MarketplaceActions() {
       await tx.wait();
 
       if (supabase) {
-        await supabase
+        const { error } = await supabase
           .from("jobs")
           .update({ status: "completed" })
           .eq("job_id", jobId);
+
+        if (error) {
+          throw new Error(`Supabase update failed: ${error.message}`);
+        }
+
+        window.dispatchEvent(new Event("jobs:updated"));
       }
     });
   };
@@ -131,10 +155,16 @@ export default function MarketplaceActions() {
       await tx.wait();
 
       if (supabase) {
-        await supabase
+        const { error } = await supabase
           .from("jobs")
           .update({ status: "cancelled" })
           .eq("job_id", jobId);
+
+        if (error) {
+          throw new Error(`Supabase update failed: ${error.message}`);
+        }
+
+        window.dispatchEvent(new Event("jobs:updated"));
       }
     });
   };
@@ -146,10 +176,16 @@ export default function MarketplaceActions() {
       await tx.wait();
 
       if (supabase) {
-        await supabase
+        const { error } = await supabase
           .from("jobs")
           .update({ status: "disputed" })
           .eq("job_id", jobId);
+
+        if (error) {
+          throw new Error(`Supabase update failed: ${error.message}`);
+        }
+
+        window.dispatchEvent(new Event("jobs:updated"));
       }
     });
   };
@@ -161,10 +197,16 @@ export default function MarketplaceActions() {
       await tx.wait();
 
       if (supabase) {
-        await supabase
+        const { error } = await supabase
           .from("jobs")
           .update({ status: releaseToFreelancer ? "completed" : "cancelled" })
           .eq("job_id", jobId);
+
+        if (error) {
+          throw new Error(`Supabase update failed: ${error.message}`);
+        }
+
+        window.dispatchEvent(new Event("jobs:updated"));
       }
     });
   };
