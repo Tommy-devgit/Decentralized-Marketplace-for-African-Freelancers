@@ -29,28 +29,15 @@ export default function MarketplaceActions() {
   const createJob = async () => {
     await runTx("Creating job", async () => {
       const contract = await getMarketplaceContract();
+      const nextId = await contract.nextJobId();
       const tx = await contract.createJob(title, cid, token, parseEther(amount || "0"));
-      const receipt = await tx.wait();
+      await tx.wait();
 
-      let createdJobId: string | null = null;
-      if (receipt?.logs?.length) {
-        for (const log of receipt.logs) {
-          try {
-            const parsed = contract.interface.parseLog(log);
-            if (parsed?.name === "JobCreated") {
-              createdJobId = parsed.args.jobId.toString();
-              break;
-            }
-          } catch {
-            // skip non-matching logs
-          }
-        }
-      }
-
+      const createdJobId = nextId.toString();
       const signer = await contract.runner?.getSigner?.();
       const address = await signer?.getAddress?.();
 
-      if (address && supabase && createdJobId) {
+      if (address && supabase) {
         const { error } = await supabase.from("jobs").insert({
           job_id: createdJobId,
           title,
@@ -68,11 +55,7 @@ export default function MarketplaceActions() {
         window.dispatchEvent(new Event("jobs:updated"));
       }
 
-      if (createdJobId) {
-        setJobId(createdJobId);
-      } else {
-        throw new Error("Job created, but Job ID not detected. Check console.");
-      }
+      setJobId(createdJobId);
     });
   };
 
