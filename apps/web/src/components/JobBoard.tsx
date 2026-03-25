@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured, supabaseDebugInfo } from "@/lib/supabase";
 import type { Job } from "@/types/models";
 import { shortAddress } from "@/lib/format";
 
@@ -71,6 +71,11 @@ export default function JobBoard() {
       <p className="mt-3 text-xs text-white/40">
         Supabase configured: {isSupabaseConfigured ? "yes" : "no"}
       </p>
+      {isSupabaseConfigured && (
+        <p className="mt-1 text-xs text-white/40">
+          Project: {supabaseDebugInfo.url} | Key: {supabaseDebugInfo.keyPrefix}
+        </p>
+      )}
 
       {!isSupabaseConfigured && (
         <p className="mt-4 text-sm text-amber-200">

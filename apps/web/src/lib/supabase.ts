@@ -5,6 +5,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
+export const supabaseDebugInfo = {
+  url: supabaseUrl,
+  keyPrefix: supabaseAnonKey ? `${supabaseAnonKey.slice(0, 12)}...` : "",
+};
+
 if (!isSupabaseConfigured) {
   console.warn("Missing Supabase environment variables.");
 }

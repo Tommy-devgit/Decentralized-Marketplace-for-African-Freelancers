@@ -33,6 +33,7 @@ contract Escrow {
     error OnlyArbiter();
     error InvalidState();
     error InvalidAmount();
+    error InvalidPayer();
 
     constructor(
         address _client,
@@ -51,18 +52,15 @@ contract Escrow {
 
     function deposit() external payable {
         if (msg.sender != client) revert OnlyClient();
-        if (state != State.Created) revert InvalidState();
-
-        if (token == address(0)) {
-            if (msg.value != amount) revert InvalidAmount();
-        } else {
-            if (msg.value != 0) revert InvalidAmount();
-            bool ok = IERC20(token).transferFrom(msg.sender, address(this), amount);
-            require(ok, "ERC20_TRANSFER_FROM_FAILED");
-        }
-
-        state = State.Funded;
+        _depositFrom(client);
         emit Funded(msg.sender, amount);
+    }
+
+    function depositFromClient(address payer) external payable {
+        if (msg.sender != arbiter) revert OnlyArbiter();
+        if (payer != client) revert InvalidPayer();
+        _depositFrom(payer);
+        emit Funded(payer, amount);
     }
 
     function releasePayment() external {
@@ -99,6 +97,20 @@ contract Escrow {
         address recipient = releaseToFreelancer ? freelancer : client;
         _payout(recipient, amount);
         emit Resolved(releaseToFreelancer);
+    }
+
+    function _depositFrom(address payer) internal {
+        if (state != State.Created) revert InvalidState();
+
+        if (token == address(0)) {
+            if (msg.value != amount) revert InvalidAmount();
+        } else {
+            if (msg.value != 0) revert InvalidAmount();
+            bool ok = IERC20(token).transferFrom(payer, address(this), amount);
+            require(ok, "ERC20_TRANSFER_FROM_FAILED");
+        }
+
+        state = State.Funded;
     }
 
     function _payout(address to, uint256 value) internal {

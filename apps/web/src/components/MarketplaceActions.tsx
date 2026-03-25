@@ -29,30 +29,74 @@ export default function MarketplaceActions() {
   const createJob = async () => {
     await runTx("Creating job", async () => {
       const contract = await getMarketplaceContract();
-      const nextId = await contract.nextJobId();
       const tx = await contract.createJob(title, cid, token, parseEther(amount || "0"));
-      await tx.wait();
+      const receipt = await tx.wait();
 
-      const createdJobId = nextId.toString();
-      const signer = await contract.runner?.getSigner?.();
-      const address = await signer?.getAddress?.();
+      let createdJobId: string | null = null;
+      if (receipt?.logs?.length) {
+        for (const log of receipt.logs) {
+          try {
+            const parsed = contract.interface.parseLog(log);
+            if (parsed?.name === "JobCreated") {
+              createdJobId = parsed.args.jobId.toString();
+              break;
+            }
+          } catch {
+            // skip non-matching logs
+          }
+        }
+      }
+
+      if (!createdJobId) {
+        throw new Error(
+          "Job created, but JobCreated event not found. Check contract address/network."
+        );
+      }
+
+      const runner = contract.runner;
+      const address =
+        runner && "getAddress" in runner && typeof runner.getAddress === "function"
+          ? await runner.getAddress()
+          : "";
 
       if (address && supabase) {
-        const { error } = await supabase.from("jobs").insert({
-          job_id: createdJobId,
-          title,
-          description_cid: cid || null,
-          budget: amount,
-          token,
-          client_wallet: address,
-          status: "open",
-        });
+        const { error, data } = await supabase
+          .from("jobs")
+          .insert({
+            job_id: createdJobId,
+            title,
+            description_cid: cid || null,
+            budget: amount,
+            token,
+            client_wallet: address,
+            status: "open",
+          })
+          .select();
 
         if (error) {
           throw new Error(`Supabase insert failed: ${error.message}`);
         }
 
+        if (!data || data.length === 0) {
+          const { data: verify, error: verifyError } = await supabase
+            .from("jobs")
+            .select("id")
+            .eq("job_id", createdJobId)
+            .limit(1);
+
+          if (verifyError) {
+            throw new Error(`Supabase verify failed: ${verifyError.message}`);
+          }
+
+          if (!verify || verify.length === 0) {
+            throw new Error("Supabase insert returned no rows. Check RLS/policies.");
+          }
+        }
+
         window.dispatchEvent(new Event("jobs:updated"));
+        setStatus("Job saved to Supabase.");
+      } else if (!supabase) {
+        setStatus("Job created on-chain. Supabase not configured.");
       }
 
       setJobId(createdJobId);
@@ -66,8 +110,11 @@ export default function MarketplaceActions() {
       await tx.wait();
 
       const job = await contract.jobs(jobId);
-      const signer = await contract.runner?.getSigner?.();
-      const address = await signer?.getAddress?.();
+      const runner = contract.runner;
+      const address =
+        runner && "getAddress" in runner && typeof runner.getAddress === "function"
+          ? await runner.getAddress()
+          : "";
 
       if (supabase) {
         const { error } = await supabase

@@ -7,7 +7,6 @@ export const REQUIRED_CHAIN_ID = 31337n;
 
 export const MARKETPLACE_ABI = [
   "event JobCreated(uint256 indexed jobId,address indexed client,address token,uint256 amount)",
-  "function nextJobId() view returns (uint256)",
   "function createJob(string title,string descriptionCid,address token,uint256 amount) returns (uint256)",
   "function acceptJob(uint256 jobId)",
   "function fundJob(uint256 jobId) payable",
@@ -47,5 +46,14 @@ export async function getMarketplaceContract() {
     throw new Error("Missing NEXT_PUBLIC_MARKETPLACE_ADDRESS in env.");
   }
   const signer = await getSigner();
+  const provider = await signer.provider;
+  if (provider) {
+    const code = await provider.getCode(MARKETPLACE_ADDRESS);
+    if (code === "0x") {
+      throw new Error(
+        "No contract at NEXT_PUBLIC_MARKETPLACE_ADDRESS. Deploy Marketplace and update .env.local."
+      );
+    }
+  }
   return new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
 }

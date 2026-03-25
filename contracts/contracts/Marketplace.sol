@@ -43,10 +43,15 @@ contract Marketplace {
     error InvalidStatus();
     error InvalidAmount();
     error MissingFreelancer();
+    error JobNotFound();
 
     constructor() {
         owner = msg.sender;
         nextJobId = 1;
+    }
+
+    function _requireJob(uint256 jobId) internal view {
+        if (jobs[jobId].id == 0) revert JobNotFound();
     }
 
     function createJob(
@@ -74,6 +79,7 @@ contract Marketplace {
     }
 
     function acceptJob(uint256 jobId) external {
+        _requireJob(jobId);
         Job storage job = jobs[jobId];
         if (job.status != JobStatus.Open) revert InvalidStatus();
 
@@ -87,19 +93,21 @@ contract Marketplace {
     }
 
     function fundJob(uint256 jobId) external payable {
+        _requireJob(jobId);
         Job storage job = jobs[jobId];
         if (job.client != msg.sender) revert OnlyClient();
         if (job.status != JobStatus.Accepted) revert InvalidStatus();
         if (job.freelancer == address(0)) revert MissingFreelancer();
 
         Escrow escrow = Escrow(job.escrow);
-        escrow.deposit{ value: msg.value }();
+        escrow.depositFromClient{ value: msg.value }(msg.sender);
 
         job.status = JobStatus.Funded;
         emit JobFunded(jobId);
     }
 
     function approveCompletion(uint256 jobId) external {
+        _requireJob(jobId);
         Job storage job = jobs[jobId];
         if (job.client != msg.sender) revert OnlyClient();
         if (job.status != JobStatus.Funded) revert InvalidStatus();
@@ -110,6 +118,7 @@ contract Marketplace {
     }
 
     function requestRefund(uint256 jobId) external {
+        _requireJob(jobId);
         Job storage job = jobs[jobId];
         if (job.client != msg.sender) revert OnlyClient();
         if (job.status != JobStatus.Funded) revert InvalidStatus();
@@ -120,6 +129,7 @@ contract Marketplace {
     }
 
     function raiseDispute(uint256 jobId) external {
+        _requireJob(jobId);
         Job storage job = jobs[jobId];
         if (msg.sender != job.client && msg.sender != job.freelancer) revert OnlyParty();
         if (job.status != JobStatus.Funded) revert InvalidStatus();
@@ -131,6 +141,7 @@ contract Marketplace {
 
     function resolveDispute(uint256 jobId, bool releaseToFreelancer) external {
         if (msg.sender != owner) revert OnlyOwner();
+        _requireJob(jobId);
 
         Job storage job = jobs[jobId];
         if (job.status != JobStatus.Disputed) revert InvalidStatus();
@@ -140,3 +151,4 @@ contract Marketplace {
         emit DisputeResolved(jobId, releaseToFreelancer);
     }
 }
+
